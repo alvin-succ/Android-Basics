@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- 外部缓存目录 -->
+    <external-cache-path
+        name="haha_my_cache_images"
+        path="." />
+
+    <!-- 外部文件目录（可选） -->
+    <external-files-path
+        name="my_external_files"
+        path="Pictures" />
+
+    <!-- 内部缓存目录（可选） -->
+<!--    <cache-path-->
+<!--        name="internal_cache"-->
+<!--        path="." />-->
+
+</paths>
