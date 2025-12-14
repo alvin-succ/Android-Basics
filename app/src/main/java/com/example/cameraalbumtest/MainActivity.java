@@ -3,6 +3,7 @@ package com.example.cameraalbumtest;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -33,6 +34,7 @@ import androidx.core.view.WindowInsetsCompat;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.DecodeFormat;
 import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.signature.ObjectKey;
 
 import java.io.File;
 
@@ -106,6 +108,13 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        shareToWeChat.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                shareImageToWeChat();
+            }
+        });
+
     }
 
     private void takePhotoAction(){
@@ -174,6 +183,8 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         try{
+            long timestamp = System.currentTimeMillis();
+            ObjectKey signature = new ObjectKey(timestamp);
 //            Bitmap bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(imageUri));
 //
 //            imageView.setImageBitmap(bitmap);
@@ -183,12 +194,158 @@ public class MainActivity extends AppCompatActivity {
                     .apply(new RequestOptions()
                             .override(1080, 1920)  // 限制尺寸
                             .format(DecodeFormat.PREFER_RGB_565))  // 减少内存
+                            .signature(signature)
                     .into(imageView);
-
+            updateSharedButtonState(true);
             Toast.makeText(this, "照片拍摄成功，可以分享到微信了", Toast.LENGTH_SHORT).show();
         }catch(Exception e){
             e.printStackTrace();
+            updateSharedButtonState(false);
             Toast.makeText(this, "图片解析失败", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * 分享图片到微信
+     */
+    private void shareImageToWeChat(){
+        if(sharedImageFile == null || !sharedImageFile.exists()){
+            Toast.makeText(this, "请先拍摄照片", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try{
+            //获取图片的Uri
+            Uri sharedUri;
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N){
+                //Android 7.0+使用FileProvider
+                sharedUri = FileProvider.getUriForFile(
+                        MainActivity.this,
+                        "com.example.cameraalbumtest.fileprovider",
+                        sharedImageFile);
+            }else{
+                sharedUri = Uri.fromFile(sharedImageFile);
+            }
+            //创建分享Intent
+            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+            shareIntent.setType("image/*");//分享图片
+            shareIntent.putExtra(Intent.EXTRA_STREAM, sharedUri);
+            shareIntent.putExtra(Intent.EXTRA_TEXT, "分享一张照片");
+
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N){
+                shareIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            }
+            //启动分享方式选择弹窗
+            launchShareDialog(shareIntent, sharedUri);
+        }catch(Exception e){
+            e.printStackTrace();
+            Toast.makeText(this, "分享失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * 展示不同分享方式选择弹窗
+     * @param sharedIntent
+     * @param sharedUri
+     */
+    private void launchShareDialog(Intent sharedIntent, Uri sharedUri){
+        String[] options = {"分享给微信好友", "分享到朋友圈", "使用其他应用分享"};
+        new AlertDialog.Builder(this)
+                .setTitle("选择分享方式")
+                .setItems(options, (dialog, which) -> {
+                    switch(which){
+                        case 0:
+                            shareToWeChatSession(sharedIntent, sharedUri);
+                            break;
+                        case 1:
+                            shareToWeChatTimeLine(sharedIntent, sharedUri);
+                            break;
+                        case 2:
+                            showShareChooser(sharedIntent);
+                            break;
+                    }
+                }).show();
+    }
+
+    private void shareToWeChatSession(Intent sharedIntent, Uri sharedUri){
+        try{
+            ComponentName componentName = new ComponentName(
+                    "com.tencent.mm",
+                    "com.tencent.mm.ui.tools.ShareImgUI");
+            Intent weChatIntent = new Intent(Intent.ACTION_SEND);
+            weChatIntent.setComponent(componentName);
+            weChatIntent.setType("image/*");
+            weChatIntent.putExtra(Intent.EXTRA_STREAM, sharedUri);
+            weChatIntent.putExtra("Kdescription", "分享一张照片");
+
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N){
+                weChatIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            }
+            startActivity(weChatIntent);
+            Toast.makeText(this, "正在打开微信...", Toast.LENGTH_SHORT).show();
+
+        }catch(Exception e){
+            e.printStackTrace();
+            // 如果直接打开失败，可能是微信未安装或版本不支持，使用通用分享
+            Toast.makeText(this, "打开微信失败，请确保已安装微信", Toast.LENGTH_SHORT).show();
+            showShareChooser(sharedIntent);
+        }
+    }
+
+    private void shareToWeChatTimeLine(Intent sharedIntent, Uri sharedUri){
+        try{
+            // 微信朋友圈的ComponentName
+            ComponentName componentName = new ComponentName(
+                    "com.tencent.mm",
+                    "com.tencent.mm.ui.tools.ShareToTimeLineUI"
+            );
+            Intent timeLineIntent = new Intent(Intent.ACTION_SEND);
+            timeLineIntent.setComponent(componentName);
+            timeLineIntent.setType("image/*");
+            timeLineIntent.putExtra(Intent.EXTRA_STREAM, sharedUri);
+            timeLineIntent.putExtra("Kdescription", "分享一张照片");
+
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N){
+                timeLineIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            }
+            startActivity(timeLineIntent);
+            Toast.makeText(this, "正在打开微信...", Toast.LENGTH_SHORT).show();
+
+        }catch(Exception e){
+            e.printStackTrace();
+            // 如果直接打开失败，可能是微信未安装或版本不支持，使用通用分享
+            Toast.makeText(this, "打开微信失败，请确保已安装微信", Toast.LENGTH_SHORT).show();
+            showShareChooser(sharedIntent);
+        }
+    }
+
+    private void showShareChooser(Intent sharedIntent){
+        try{
+            //创建选择器标题
+            String title = "选择分享应用";
+            //创建分享选择器
+            Intent chooser = Intent.createChooser(sharedIntent, title);
+
+            //验证是否有应用可以处理这个Intent
+            if(sharedIntent.resolveActivity(getPackageManager()) != null){
+                startActivity(chooser);
+            }else{
+                Toast.makeText(this, "没有找到可以分享的应用", Toast.LENGTH_SHORT).show();
+            }
+        }catch(Exception e){
+            e.printStackTrace();
+            Toast.makeText(this, "分享失败", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * 更新分享按钮状态
+     */
+    private void updateSharedButtonState(boolean enabled){
+        shareToWeChat.setEnabled(enabled);
+        if(enabled){
+            shareToWeChat.setAlpha(1.0f);
+        }else{
+            shareToWeChat.setAlpha(0.5f);
         }
     }
 
