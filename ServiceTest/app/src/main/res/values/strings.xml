@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">ServiceTest</string>
+    <string name="channel_name">My Service Channel</string>
+    <string name="channel_description">This channel is used for my foreground service</string>
+</resources>
