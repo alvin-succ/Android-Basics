@@ -48,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
         Button bindBtn = findViewById(R.id.bind_service);
         Button unbindBtn = findViewById(R.id.unbind_service);
         Button startIntentBtn = findViewById(R.id.start_intent_service);
+        Button startIntentBtnExecutor = findViewById(R.id.start_intent_service_executor);
 
         startBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -116,7 +117,20 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
+        startIntentBtnExecutor.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Log.d("MainActivity", "Thread is " + Thread.currentThread().getId());
+                Intent intentService = new Intent(MainActivity.this, MyBackgroundService.class);
+                intentService.putExtra("data", "需要处理的数据");
+                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
+                    // Android 8.0+ 需要使用 startForegroundService 或 startForeground
+                    startForegroundService(intentService);
+                }else{
+                    startService(intentService);
+                }
+            }
+        });
     }
 
     private void startServiceWithPermissions() {

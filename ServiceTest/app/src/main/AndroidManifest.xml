@@ -30,7 +30,10 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync|specialUse" />
-
+        <service android:name=".MyBackgroundService"
+            android:enabled="true"
+            android:exported="false"
+            />
         <activity
             android:name=".MainActivity"
             android:exported="true">
