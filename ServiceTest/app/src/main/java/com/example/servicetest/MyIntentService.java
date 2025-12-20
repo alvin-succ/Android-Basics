@@ -5,7 +5,7 @@ import android.content.Intent;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
-
+//deprecated usage
 public class MyIntentService extends IntentService {
     public MyIntentService(String name) {
         super("MyIntentService");

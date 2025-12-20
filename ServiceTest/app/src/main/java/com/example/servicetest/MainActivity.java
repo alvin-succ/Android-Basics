@@ -3,12 +3,18 @@ package com.example.servicetest;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.work.Data;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
 
 import android.Manifest;
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -18,7 +24,20 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_CODE_MANAGE_OWN_CALLS = 1001;
     private static final int REQUEST_CODE_POST_NOTIFICATIONS = 1002;
+    private MyService.DownloadBinder downloadBinder;
+    private ServiceConnection connection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+            downloadBinder = (MyService.DownloadBinder) iBinder;
+            downloadBinder.startDownLoad();
+            downloadBinder.getProgress();
+        }
 
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+
+        }
+    };
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -26,6 +45,8 @@ public class MainActivity extends AppCompatActivity {
 
         Button startBtn = findViewById(R.id.start_service);
         Button stopBtn = findViewById(R.id.stop_service);
+        Button bindBtn = findViewById(R.id.bind_service);
+        Button unbindBtn = findViewById(R.id.unbind_service);
         Button startIntentBtn = findViewById(R.id.start_intent_service);
 
         startBtn.setOnClickListener(new View.OnClickListener() {
@@ -42,14 +63,60 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        bindBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent bindIntent = new Intent(MainActivity.this, MyService.class);
+                bindService(bindIntent, connection, BIND_AUTO_CREATE);
+            }
+        });
+
+        unbindBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                unbindService(connection);
+            }
+        });
+
+
+        //deprecated usage
+//        startIntentBtn.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                Log.d("MainActivity", "Thread is " + Thread.currentThread().getId());
+//                Intent intentService = new Intent(MainActivity.this, MyIntentService.class);
+//                startService(intentService);
+//            }
+//        });
+
         startIntentBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Log.d("MainActivity", "Thread is " + Thread.currentThread().getId());
-                Intent intentService = new Intent(MainActivity.this, MyIntentService.class);
-                startService(intentService);
+                //构建输入数据
+                Data inputData = new Data.Builder()
+                        .putString("data", "需要处理的数据")
+                        .build();
+                //创建一次性工作请求
+                OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(MyWorker.class)
+                        .setInputData(inputData)
+                        .build();
+                //提交工作请求
+                WorkManager.getInstance(MainActivity.this)
+                        .enqueue(workRequest);
+
+                //可选，监听任务状态
+                WorkManager.getInstance(MainActivity.this)
+                        .getWorkInfoByIdLiveData(workRequest.getId())
+                        .observe(MainActivity.this, workInfo -> {
+                            if(workInfo != null && workInfo.getState().isFinished()){
+                                Log.d("MainActivity", "Work 完成状态: " + workInfo.getState());
+                            }
+                        });
             }
         });
+
+
     }
 
     private void startServiceWithPermissions() {
