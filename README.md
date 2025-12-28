@@ -22,7 +22,7 @@
 - **演示项目**：ServiceTest
 - **主要功能**：演示Service的基本用法和生命周期管理
 - **技术要点**：Service启动方式、绑定服务、前台服务、跨进程通信
-- **文章链接**：[Service使用示例教程](https://blog.csdn.net/weixin_45769562/article/details/155890289?spm=1001.2014.3001.5502)
+- **文章链接**：[Service使用示例教程](https://blog.csdn.net/weixin_45769562/article/details/156115825?spm=1001.2014.3001.5502)
 
 ---
 
